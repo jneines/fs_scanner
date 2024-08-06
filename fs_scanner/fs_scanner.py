@@ -136,18 +136,23 @@ def scan(entry_dir, output, checksum, verbose):
 
     tic = time.time()
     file_count = 0
+    content_size = 0
     for root, dirs, files in entry_dir.walk():
         for _file in files:
             file_count += 1
 
             file_path = root / _file
-            file_size = file_path.stat().st_size
+            s = file_path.stat()
+            file_size = s.st_size
+            last_modified = s.st_mtime
+            content_size += file_size
 
             file_checksum = checksum_mapper[checksum](file_path)
 
             record = {
                 "path": file_path.relative_to(entry_dir.parent).as_posix(),
                 "size": file_size,
+                "last_modified": last_modified,
                 "checksum": file_checksum,
             }
 
@@ -160,8 +165,10 @@ def scan(entry_dir, output, checksum, verbose):
 
     logger.info(f"Scan took {toc-tic:.1f} s.")
     logger.info(f"Scanned {file_count} files.")
+    logger.info(f"Overall content size is {content_size:_d} Bytes")
 
 
 
 if __name__ == "__main__":
     sys.exit(scan())  # pragma: no cover
+
