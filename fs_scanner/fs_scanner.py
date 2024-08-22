@@ -143,6 +143,9 @@ def scan(entry_dir, output, checksum, verbose):
 
             file_path = root / _file
             s = file_path.stat()
+            if not file_path.is_file():
+                logger.warning(f"{file_path.as_posix()} is not a regular file. Skipping ...")
+                continue
             file_size = s.st_size
             last_modified = s.st_mtime
             content_size += file_size
