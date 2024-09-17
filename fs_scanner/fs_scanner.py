@@ -136,27 +136,35 @@ def scan(entry_dir, output, checksum, verbose):
 
     tic = time.time()
     file_count = 0
+    error_count = 0
     content_size = 0
     for root, dirs, files in entry_dir.walk():
         for _file in files:
             file_count += 1
 
             file_path = root / _file
-            s = file_path.stat()
-            if not file_path.is_file():
-                logger.warning(f"{file_path.as_posix()} is not a regular file. Skipping ...")
-                continue
-            file_size = s.st_size
-            last_modified = s.st_mtime
-            content_size += file_size
+            check_state = "OK"
+            try:
+                s = file_path.stat()
+                if not file_path.is_file():
+                    logger.warning(f"{file_path.as_posix()} is not a regular file. Skipping ...")
+                    continue
+                file_size = s.st_size
+                last_modified = s.st_mtime
+                content_size += file_size
 
-            file_checksum = checksum_mapper[checksum](file_path)
+                file_checksum = checksum_mapper[checksum](file_path)
+            except OSError as e:
+                logger.error(f"Unable to process file. Error was {e}")
+                check_state = str(e)
+                error_count += 1
 
             record = {
                 "path": file_path.relative_to(entry_dir.parent).as_posix(),
                 "size": file_size,
                 "last_modified": last_modified,
                 "checksum": file_checksum,
+                "check_state": check_state,
             }
 
             output_stream.write(json.dumps(record) + "\n")
@@ -168,6 +176,7 @@ def scan(entry_dir, output, checksum, verbose):
 
     logger.info(f"Scan took {toc-tic:.1f} s.")
     logger.info(f"Scanned {file_count} files.")
+    logger.info(f"{error_count} errors occured while scanning.")
     logger.info(f"Overall content size is {content_size:_d} Bytes")
 
 
